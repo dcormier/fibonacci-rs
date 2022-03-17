@@ -88,14 +88,24 @@ use num::{CheckedAdd, One, Zero};
 ///     nums,
 /// );
 /// ```
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Fibonacci<T>(Option<T>, Option<T>)
 where
     T: Debug + Copy + Clone + CheckedAdd + Zero + One;
 
+// Implementing this manually so `T` doesn't need to be `Default`
+impl<T> Default for Fibonacci<T>
+where
+    T: Debug + Copy + Clone + CheckedAdd + Zero + One,
+{
+    fn default() -> Self {
+        Self(None, None)
+    }
+}
+
 impl<T> Fibonacci<T>
 where
-    T: Debug + Default + Copy + Clone + CheckedAdd + Zero + One,
+    T: Debug + Copy + Clone + CheckedAdd + Zero + One,
 {
     /// Returns the F*ₙ* value in the Fibonacci series.
     ///
@@ -143,7 +153,7 @@ where
     /// ```
     /// # use fibs::Fibonacci;
     /// #
-    /// let n = Fibonacci::<u8>::f(9000).unwrap_or_else(|(_max_n, max_val)| max_val);
+    /// let n: u8 = Fibonacci::f(9000).unwrap_or_else(|(_max_n, max_val)| max_val);
     /// assert_eq!(233, n);
     /// ```
     pub fn f(n: usize) -> Result<T, (usize, T)> {
