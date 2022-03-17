@@ -1,3 +1,6 @@
+#![deny(warnings)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use core::{fmt::Debug, iter::FusedIterator};
 
 use num::{CheckedAdd, One, Zero};
@@ -8,7 +11,7 @@ use num::{CheckedAdd, One, Zero};
 ///
 /// You can just get a number directly (F*ₙ*) using [`Fibonacci::f`]:
 /// ```
-/// use fibonacci::Fibonacci;
+/// use fibs::Fibonacci;
 ///
 /// let n = Fibonacci::f(9);
 /// assert_eq!(Ok(34), n);
@@ -16,7 +19,7 @@ use num::{CheckedAdd, One, Zero};
 ///
 /// Or use [`Fibonacci`] as an [`Iterator`]:
 /// ```
-/// # use fibonacci::Fibonacci;
+/// # use fibs::Fibonacci;
 /// #
 /// let nums = Fibonacci::default()
 ///     .skip(3)
@@ -29,7 +32,7 @@ use num::{CheckedAdd, One, Zero};
 /// ```
 ///
 /// ```
-/// # use fibonacci::Fibonacci;
+/// # use fibs::Fibonacci;
 /// #
 /// // The iterator starts with 0, so `.take(10).last()` == F₉
 /// let n = Fibonacci::default().take(10).last();
@@ -39,7 +42,7 @@ use num::{CheckedAdd, One, Zero};
 ///
 /// If you know you need multiple values, it will be cheaper to reuse an [`Iterator`].
 /// ```
-/// # use fibonacci::Fibonacci;
+/// # use fibs::Fibonacci;
 /// #
 /// let nums = Fibonacci::default()
 ///     .enumerate()
@@ -66,7 +69,7 @@ use num::{CheckedAdd, One, Zero};
 /// The [`Iterator`] will produce values until the target numeric type would
 /// overflow:
 /// ```
-/// # use fibonacci::Fibonacci;
+/// # use fibs::Fibonacci;
 /// #
 /// let nums: Vec<_> = Fibonacci::<u8>::default().collect();
 /// assert_eq!(
@@ -77,7 +80,7 @@ use num::{CheckedAdd, One, Zero};
 ///
 /// Wider numeric types result in larger numbers:
 /// ```
-/// # use fibonacci::Fibonacci;
+/// # use fibs::Fibonacci;
 /// #
 /// let nums = Fibonacci::default().collect::<Vec<u16>>();
 /// assert_eq!(
@@ -106,7 +109,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use fibonacci::Fibonacci;
+    /// use fibs::Fibonacci;
     ///
     /// let n = Fibonacci::f(9);
     /// assert_eq!(Ok(34), n);
@@ -114,7 +117,7 @@ where
     ///
     /// If you try to get a number too big for your target numeric type, it'll tell you:
     /// ```
-    /// # use fibonacci::Fibonacci;
+    /// # use fibs::Fibonacci;
     /// #
     /// let n = Fibonacci::<u8>::f(14);
     /// assert_eq!(Err((13, 233)), n);
@@ -126,7 +129,7 @@ where
     ///
     /// Wider target type, larger numbers:
     /// ```
-    /// # use fibonacci::Fibonacci;
+    /// # use fibs::Fibonacci;
     /// #
     /// let n = Fibonacci::<u128>::f(187);
     /// assert_eq!(Err((186, 332825110087067562321196029789634457848)), n);
@@ -138,7 +141,7 @@ where
     /// If you don't care if you asked for a value too high for your target numeric type
     /// and just want a value:
     /// ```
-    /// # use fibonacci::Fibonacci;
+    /// # use fibs::Fibonacci;
     /// #
     /// let n = Fibonacci::<u8>::f(9000).unwrap_or_else(|(_max_n, max_val)| max_val);
     /// assert_eq!(233, n);

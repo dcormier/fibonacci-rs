@@ -1,9 +1,29 @@
 [package]
-name = "fibonacci"
+name = "fibs"
+authors = ["Daniel Cormier"]
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Get a Fibonacci number or sequence"
+documentation = "https://docs.rs/fibs/"
+repository = "https://github.com/dcormier/fibonacci-rs"
+license= "Apache-2.0"
+categories = [
+    "no-std",
+    "mathematics",
+]
+exclude = [
+    "check.sh"
+]
 
 [dependencies]
 num = "0"
+
+[features]
+default = ["std"]
+std = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.playground]
+all-features = true
