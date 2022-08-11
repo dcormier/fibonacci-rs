@@ -228,9 +228,9 @@ where
         }
 
         let current = self.current.clone().or_else(|| Some(T::zero()));
-        let next = current
-            .clone()
-            .and_then(|current| current.checked_add(&self.previous.clone().unwrap_or_else(T::one)));
+        let next = current.clone().and_then(|current| {
+            current.checked_add(&mem::replace(&mut self.previous, None).unwrap_or_else(T::one))
+        });
 
         self.previous = current;
         mem::replace(&mut self.current, next).or_else(|| Some(T::zero()))
