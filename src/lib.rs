@@ -1,7 +1,7 @@
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::{fmt::Debug, iter::FusedIterator};
+use core::{fmt::Debug, iter::FusedIterator, mem};
 
 use num::{CheckedAdd, One, Zero};
 
@@ -88,24 +88,58 @@ use num::{CheckedAdd, One, Zero};
 ///     nums,
 /// );
 /// ```
-#[derive(Debug, Copy, Clone)]
-pub struct Fibonacci<T>(Option<T>, Option<T>)
-where
-    T: Debug + Copy + Clone + CheckedAdd + Zero + One;
+pub struct Fibonacci<T> {
+    previous: Option<T>,
+    current: Option<T>,
+}
 
-// Implementing this manually so `T` doesn't need to be `Default`
-impl<T> Default for Fibonacci<T>
+impl<T> Debug for Fibonacci<T>
 where
-    T: Debug + Copy + Clone + CheckedAdd + Zero + One,
+    T: Debug,
 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Fibonacci")
+            .field("previous", &self.previous)
+            .field("current", &self.current)
+            .finish()
+    }
+}
+
+impl<T> Copy for Fibonacci<T> where T: Copy {}
+
+impl<T> Clone for Fibonacci<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            previous: self.previous.clone(),
+            current: self.current.clone(),
+        }
+    }
+}
+
+// This does not require that `T` implement `Default`
+impl<T> Default for Fibonacci<T> {
     fn default() -> Self {
-        Self(None, None)
+        Self {
+            previous: None,
+            current: None,
+        }
+    }
+}
+
+impl<T> Fibonacci<T> {
+    fn has_overflowed(&self) -> bool {
+        // If there is no current number, but there is a previous one,
+        // then the last iteration caused an overflow.
+        self.current.is_none() && self.previous.is_some()
     }
 }
 
 impl<T> Fibonacci<T>
 where
-    T: Debug + Copy + Clone + CheckedAdd + Zero + One,
+    T: Debug + Clone + CheckedAdd + Zero + One,
 {
     /// Returns the F*ₙ* value in the Fibonacci series.
     ///
@@ -146,6 +180,18 @@ where
     ///
     /// let n = Fibonacci::<u128>::f(186);
     /// assert_eq!(Ok(332825110087067562321196029789634457848), n);
+    ///
+    #[cfg_attr(
+        feature = "std",
+        doc = r##"
+// Or, if you want _really_ big numbers, you can use other types.
+let n = Fibonacci::<num::BigUint>::f(1000);
+assert_eq!(
+    "Ok(43466557686937456435688527675040625802564660517371780402481729089536555417949051890403879840079255169295922593080322634775209689623239873322471161642996440906533187938298969649928516003704476137795166849228875)",
+    format!("{:?}", n),
+);
+"##
+    )]
     /// ```
     ///
     /// If you don't care if you asked for a value too high for your target numeric type
@@ -172,26 +218,26 @@ where
 
 impl<T> Iterator for Fibonacci<T>
 where
-    T: Debug + Copy + Clone + CheckedAdd + Zero + One,
+    T: Clone + CheckedAdd + Zero + One,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        if self.1.is_none() && self.0.is_some() {
-            // We're here because we overflowed on the previous iteration.
-            // We're done.
+        if self.has_overflowed() {
             return None;
         }
 
-        let current = self.1.or_else(|| Some(T::zero()));
-        let next = current.and_then(|current| current.checked_add(&self.0.unwrap_or_else(T::one)));
+        let current = self.current.clone().or_else(|| Some(T::zero()));
+        let next = current
+            .clone()
+            .and_then(|current| current.checked_add(&self.previous.clone().unwrap_or_else(T::one)));
 
-        self.0 = current;
-        core::mem::replace(&mut self.1, next).or_else(|| Some(T::zero()))
+        self.previous = current;
+        mem::replace(&mut self.current, next).or_else(|| Some(T::zero()))
     }
 }
 
-impl<T> FusedIterator for Fibonacci<T> where T: Debug + Copy + Clone + CheckedAdd + Zero + One {}
+impl<T> FusedIterator for Fibonacci<T> where T: Clone + CheckedAdd + Zero + One {}
 
 #[cfg(test)]
 mod test {
@@ -223,9 +269,9 @@ mod test {
 
     fn n_too_big<T>(max_n: usize, expect: T)
     where
-        T: Debug + Default + Copy + Clone + PartialEq + CheckedAdd + Zero + One,
+        T: Debug + Default + Clone + PartialEq + CheckedAdd + Zero + One,
     {
-        assert_eq!(Ok(expect), Fibonacci::f(max_n));
+        assert_eq!(Ok(expect.clone()), Fibonacci::f(max_n));
         assert_eq!(Err((max_n, expect)), Fibonacci::f(max_n + 1));
     }
 
