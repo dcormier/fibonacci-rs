@@ -1,7 +1,7 @@
 [package]
 name = "fibs"
 authors = ["Daniel Cormier"]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Get a Fibonacci number or sequence"
 documentation = "https://docs.rs/fibs/"
@@ -12,15 +12,22 @@ categories = [
     "mathematics",
 ]
 exclude = [
-    "check.sh"
+    ".gitignore",
+    "Cargo.lock",
+    "check.sh",
+    "benches",
 ]
 
 [dependencies]
 num = { version = "0", default-features = false }
 
+[dev-dependencies]
+paste = "1"
+
 [features]
 default = ["std"]
 std = ["num/std"]
+bench = ["std"]
 
 [package.metadata.docs.rs]
 all-features = true

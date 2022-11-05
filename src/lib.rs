@@ -147,6 +147,10 @@ where
     /// indicating the largest *ₙ* that would *not* overflow `T`, as
     /// well as what that F*ₙ* value is.
     ///
+    /// For types that support such large values (like [`num::BigUint`]), the
+    /// maximum F*ₙ* is `Fibonacci::f(usize::MAX-1)`, otherwise `Err` is returned,
+    /// as outlined above.
+    ///
     /// If you know you need multiple values, it will be cheaper to use
     /// this type as an [`Iterator`].
     ///
@@ -203,15 +207,28 @@ assert_eq!(
     /// assert_eq!(233, n);
     /// ```
     pub fn f(n: usize) -> Result<T, (usize, T)> {
-        let m = Self::default()
-            .take(n + 1)
+        let (n, n_overflowed) = n
+            .checked_add(1)
+            .map(|n| (n, false))
+            .unwrap_or_else(|| (n, true));
+
+        let (index, f) = Self::default()
+            .take(n)
             .enumerate()
             .last()
-            .expect("How could a numeric type not even be able to get to 0?");
+            .unwrap_or_else(|| {
+                assert!(n > 0, "n must be > 0, otherwise there's a bug");
 
-        match m.0 {
-            i if i == n => Ok(m.1),
-            _ => Err(m),
+                panic!(
+                    "How could numeric type {} not even be able to get to 0?",
+                    core::any::type_name::<T>()
+                )
+            });
+
+        if !n_overflowed && index == n - 1 {
+            Ok(f)
+        } else {
+            Err((index, f))
         }
     }
 }
@@ -222,15 +239,15 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.has_overflowed() {
             return None;
         }
 
         let current = self.current.clone().or_else(|| Some(T::zero()));
-        let next = current.clone().and_then(|current| {
-            current.checked_add(&mem::replace(&mut self.previous, None).unwrap_or_else(T::one))
-        });
+        let next = current
+            .clone()
+            .and_then(|current| current.checked_add(&self.previous.take().unwrap_or_else(T::one)));
 
         self.previous = current;
         mem::replace(&mut self.current, next).or_else(|| Some(T::zero()))
@@ -267,21 +284,49 @@ mod test {
         assert_eq!(Some(2), f.next());
     }
 
-    fn n_too_big<T>(max_n: usize, expect: T)
+    #[track_caller]
+    fn known_max<T>(max_n: usize, expect: T)
     where
         T: Debug + Default + Clone + PartialEq + CheckedAdd + Zero + One,
     {
         assert_eq!(Ok(expect.clone()), Fibonacci::f(max_n));
-        assert_eq!(Err((max_n, expect)), Fibonacci::f(max_n + 1));
+        assert_eq!(Err((max_n, expect.clone())), Fibonacci::f(max_n + 1));
+        assert_eq!(Err((max_n, expect)), Fibonacci::f(usize::MAX));
     }
 
-    #[test]
-    fn n_too_big_u8() {
-        n_too_big(13, 233_u8);
+    macro_rules! known_max {
+        ($t:ty, $max_n:expr, $expect:expr) => {
+            paste::item! {
+                #[test]
+                fn [<max_n_ $t>]() {
+                    known_max::<$t>($max_n, $expect)
+                }
+            }
+        };
     }
 
+    known_max!(i8, 11, 89);
+    known_max!(u8, 13, 233);
+    known_max!(i16, 23, 28657);
+    known_max!(u16, 24, 46368);
+    known_max!(i32, 46, 1836311903);
+    known_max!(u32, 47, 2971215073);
+    known_max!(i64, 92, 7540113804746346429);
+    known_max!(u64, 93, 12200160415121876738);
+    known_max!(u128, 186, 332825110087067562321196029789634457848);
+    known_max!(i128, 184, 127127879743834334146972278486287885163);
+
+    #[cfg(feature = "std")]
+    #[ignore = "Only run this if you've got time on your hands. \
+        It takes at least the better part of an hour."]
     #[test]
-    fn n_too_big_u64() {
-        n_too_big(93, 12200160415121876738_u64);
+    fn max_big_uint() {
+        assert_eq!(
+            Err(usize::MAX - 1),
+            Fibonacci::<num::BigUint>::f(usize::MAX).map_err(|(max_n, _max_big_uint)| {
+                // Discarding the maximum value value because it's too much.
+                max_n
+            }),
+        );
     }
 }
