@@ -147,10 +147,6 @@ where
     /// indicating the largest *ₙ* that would *not* overflow `T`, as
     /// well as what that F*ₙ* value is.
     ///
-    /// For types that support such large values (like [`num::BigUint`]), the
-    /// maximum F*ₙ* is `Fibonacci::f(usize::MAX-1)`, otherwise `Err` is returned,
-    /// as outlined above.
-    ///
     /// If you know you need multiple values, it will be cheaper to use
     /// this type as an [`Iterator`].
     ///
@@ -207,25 +203,32 @@ assert_eq!(
     /// assert_eq!(233, n);
     /// ```
     pub fn f(n: usize) -> Result<T, (usize, T)> {
-        let (n, n_overflowed) = n
-            .checked_add(1)
-            .map(|n| (n, false))
-            .unwrap_or_else(|| (n, true));
+        let mut iter = Self::default().enumerate();
+        let mut last = None;
+        let last = loop {
+            let this = iter.next();
+            match this.as_ref().map(|(index, _)| n.eq(index)) {
+                Some(reached_n) => {
+                    if reached_n {
+                        break this;
+                    } else {
+                        last = this;
+                    }
+                }
+                None => break last,
+            }
+        };
 
-        let (index, f) = Self::default()
-            .take(n)
-            .enumerate()
-            .last()
-            .unwrap_or_else(|| {
-                assert!(n > 0, "n must be > 0, otherwise there's a bug");
+        let (index, f) = last.unwrap_or_else(|| {
+            assert!(n > 0, "n must be > 0, otherwise there's a bug");
 
-                panic!(
-                    "How could numeric type {} not even be able to get to 0?",
-                    core::any::type_name::<T>()
-                )
-            });
+            panic!(
+                "How could numeric type {} not even be able to get to 0?",
+                core::any::type_name::<T>()
+            )
+        });
 
-        if !n_overflowed && index == n - 1 {
+        if index == n {
             Ok(f)
         } else {
             Err((index, f))
@@ -313,8 +316,8 @@ mod test {
     known_max!(u32, 47, 2971215073);
     known_max!(i64, 92, 7540113804746346429);
     known_max!(u64, 93, 12200160415121876738);
-    known_max!(u128, 186, 332825110087067562321196029789634457848);
     known_max!(i128, 184, 127127879743834334146972278486287885163);
+    known_max!(u128, 186, 332825110087067562321196029789634457848);
 
     #[cfg(feature = "std")]
     #[ignore = "Only run this if you've got time on your hands. \
@@ -322,11 +325,12 @@ mod test {
     #[test]
     fn max_big_uint() {
         assert_eq!(
-            Err(usize::MAX - 1),
-            Fibonacci::<num::BigUint>::f(usize::MAX).map_err(|(max_n, _max_big_uint)| {
-                // Discarding the maximum value value because it's too much.
-                max_n
-            }),
+            Ok(()),
+            Fibonacci::<num::BigUint>::f(usize::MAX)
+                // Discarding the `BigUint` value because it's too much.
+                .map(|_f| ())
+                .map_err(|(max_n, _max_big_uint)| { max_n }),
+            "Should be able to count to `usize::MAX`"
         );
     }
 }
