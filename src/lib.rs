@@ -1,6 +1,12 @@
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+//! Provides a function and an [`Iterator`] for getting Fibonacci numbers.
+//!
+//! See the docs on [`Fibonacci::f`] for a function to get a specific F*ₙ* value.
+//!
+//! See the docs on [`Fibonacci`] for an [`Iterator`].
+
 use core::{fmt::Debug, iter::FusedIterator, mem};
 
 use num::{CheckedAdd, One, Zero};
