@@ -222,43 +222,47 @@ assert_eq!(
         //
         // This is how we handle both extremes.
 
-        let mut index = None;
-        let mut iter = Self::default()
-            // Doing this instead of using `.enumerate()` because that will
-            // overflow if `n == usize::MAX`.
-            .map(|value| {
-                (
-                    match index {
-                        Some(mut i) => {
-                            i += 1;
-                            index = Some(i);
-
-                            i
-                        }
-                        None => {
-                            index = Some(0);
-
-                            0
-                        }
-                    },
-                    value,
-                )
-            });
-        let (index, f) = iter
-            .next()
-            .and_then(|first| iter.take(n).last().or(Some(first)))
-            .unwrap_or_else(|| {
-                panic!(
-                    "How could numeric type {} not even be able to get to 0?",
-                    core::any::type_name::<T>()
-                )
-            });
-
-        if index == n {
-            Ok(f)
-        } else {
-            Err((index, f))
+        #[inline]
+        fn zero_failed<T>() -> T {
+            panic!(
+                "How could numeric type {} not even be able to get to 0?",
+                core::any::type_name::<T>()
+            )
         }
+
+        let mut iter = Self::default();
+
+        // TODO: Once stabilized, use `Iterator::advance_by()`
+        //       https://github.com/rust-lang/rust/issues/77404
+        //       https://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#method.advance_by
+        let mut last = None;
+        for i in 0..n {
+            last = Some(iter.next().ok_or_else(|| {
+                if i == 0 {
+                    zero_failed()
+                } else {
+                    (
+                        i - 1,
+                        // If we're here, then this _must_ be `Some` because we've
+                        // already done at least one iteration and didn't return.
+                        last.unwrap(),
+                    )
+                }
+            })?);
+        }
+
+        iter.next().ok_or_else(|| {
+            if n == 0 {
+                zero_failed()
+            } else {
+                (
+                    n - 1,
+                    // This _must_ be `Some` because n > 0 and we didn't return
+                    // from the above `for` loop.
+                    last.unwrap(),
+                )
+            }
+        })
     }
 }
 
