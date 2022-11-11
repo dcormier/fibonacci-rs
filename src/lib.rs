@@ -209,30 +209,50 @@ assert_eq!(
     /// assert_eq!(233, n);
     /// ```
     pub fn f(n: usize) -> Result<T, (usize, T)> {
-        let mut iter = Self::default().enumerate();
-        let mut last = None;
-        let last = loop {
-            let this = iter.next();
-            match this.as_ref().map(|(index, _)| n.eq(index)) {
-                Some(reached_n) => {
-                    if reached_n {
-                        break this;
-                    } else {
-                        last = this;
-                    }
-                }
-                None => break last,
-            }
-        };
+        // There's a little bit of trickery here.
+        //
+        // We need to handle both `n == 0` and `n == usize::MAX`.
+        //
+        // With `n == 0`, we can't just `Self::default().enumerate().take(n).last()`
+        // because it'll take 0 items and `.last()` will return `None`. So we _must_
+        // call `.next()` at least once.
+        //
+        // We can't use `Self::default().enumerate().take(n+1).last()` because that would
+        // overflow (panic) if `n == usize::MAX`.
+        //
+        // This is how we handle both extremes.
 
-        let (index, f) = last.unwrap_or_else(|| {
-            assert!(n > 0, "n must be > 0, otherwise there's a bug");
+        let mut index = None;
+        let mut iter = Self::default()
+            // Doing this instead of using `.enumerate()` because that will
+            // overflow if `n == usize::MAX`.
+            .map(|value| {
+                (
+                    match index {
+                        Some(mut i) => {
+                            i += 1;
+                            index = Some(i);
 
-            panic!(
-                "How could numeric type {} not even be able to get to 0?",
-                core::any::type_name::<T>()
-            )
-        });
+                            i
+                        }
+                        None => {
+                            index = Some(0);
+
+                            0
+                        }
+                    },
+                    value,
+                )
+            });
+        let (index, f) = iter
+            .next()
+            .and_then(|first| iter.take(n).last().or(Some(first)))
+            .unwrap_or_else(|| {
+                panic!(
+                    "How could numeric type {} not even be able to get to 0?",
+                    core::any::type_name::<T>()
+                )
+            });
 
         if index == n {
             Ok(f)
