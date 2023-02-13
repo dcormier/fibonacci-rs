@@ -7,7 +7,7 @@
 //!
 //! See the docs on [`Fibonacci`] for an [`Iterator`].
 
-use core::{fmt::Debug, iter::FusedIterator, mem};
+use core::{fmt::Debug, iter::FusedIterator};
 
 use num::{CheckedAdd, One, Zero};
 
@@ -135,13 +135,14 @@ impl<T> Default for Fibonacci<T> {
     }
 }
 
-impl<T> Fibonacci<T> {
-    fn has_overflowed(&self) -> bool {
-        // If there is no current number, but there is a previous one,
-        // then the last iteration caused an overflow.
-        self.current.is_none() && self.previous.is_some()
-    }
-}
+// Unused, for now. But I expect it may be handy in the future.
+// impl<T> Fibonacci<T> {
+//     fn has_overflowed(&self) -> bool {
+//         // If there is no current number, but there is a previous one,
+//         // then the last iteration caused an overflow.
+//         self.current.is_none() && self.previous.is_some()
+//     }
+// }
 
 impl<T> Fibonacci<T>
 where
@@ -273,17 +274,27 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.has_overflowed() {
-            return None;
+        match (self.previous.take(), self.current.take()) {
+            (None, None) => {
+                // The first use of this iterator.
+
+                self.current = Some(T::zero());
+
+                self.current.clone()
+            }
+            (Some(_previous), None) => {
+                // If there is no current number, but there is a previous one,
+                // then the last iteration caused an overflow.
+
+                None
+            }
+            (previous, Some(current)) => {
+                self.previous = Some(current.clone());
+                self.current = current.checked_add(&previous.unwrap_or_else(T::one));
+
+                self.current.clone()
+            }
         }
-
-        let current = self.current.clone().or_else(|| Some(T::zero()));
-        let next = current
-            .clone()
-            .and_then(|current| current.checked_add(&self.previous.take().unwrap_or_else(T::one)));
-
-        self.previous = current;
-        mem::replace(&mut self.current, next).or_else(|| Some(T::zero()))
     }
 }
 
