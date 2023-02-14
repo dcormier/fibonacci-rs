@@ -322,10 +322,27 @@ mod test {
         );
 
         let mut f = Fibonacci::default();
-        assert_eq!(Some(0), f.next());
+        assert_eq!(Some(0_u8), f.next());
         assert_eq!(Some(1), f.next());
         assert_eq!(Some(1), f.next());
         assert_eq!(Some(2), f.next());
+        assert_eq!(Some(3), f.next());
+        assert_eq!(Some(5), f.next());
+        assert_eq!(Some(8), f.next());
+        assert_eq!(Some(13), f.next());
+        assert_eq!(Some(21), f.next());
+        assert_eq!(Some(34), f.next());
+        assert_eq!(Some(55), f.next());
+        assert_eq!(Some(89), f.next());
+        assert_eq!(Some(144), f.next());
+        assert_eq!(Some(233), f.next());
+        assert_eq!(
+            None,
+            f.next(),
+            "Should have stopped once the target type would overflow"
+        );
+        assert_eq!(None, f.next(), "Should continue to get None");
+        assert_eq!(None, f.next(), "Should continue to get None");
     }
 
     #[track_caller]
