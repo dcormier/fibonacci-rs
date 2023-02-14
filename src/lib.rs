@@ -282,9 +282,10 @@ where
 
                 self.current.clone()
             }
-            (Some(_previous), None) => {
+            (Some(previous), None) => {
                 // If there is no current number, but there is a previous one,
                 // then the last iteration caused an overflow.
+                self.previous = Some(previous);
 
                 None
             }
